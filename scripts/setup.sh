@@ -92,6 +92,7 @@ except Exception as e:
 fi
 swift sft \
   --model "$MODEL_ID" \
+  --template qwen2_5_vl \
   --dataset "$TRAIN_JSONL" \
   --val_dataset "$VAL_JSONL" \
   --use_hf true \
@@ -136,6 +137,7 @@ with open('$DATA_DIR/test_one.jsonl', 'w', encoding='utf-8') as f:
 "
 swift infer \
   --model "$MODEL_ID" \
+  --template qwen2_5_vl \
   --adapters "$LAST_CKPT" \
   --use_hf true \
   --val_dataset "$DATA_DIR/test_one.jsonl" \
