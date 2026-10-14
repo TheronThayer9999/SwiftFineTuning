@@ -39,10 +39,11 @@ export HF_TOKEN
 
 echo "=== 1/6 install ms-swift ==="
 pip install -q ms-swift qwen-vl-utils datasets pyarrow pillow huggingface_hub
-swift --help > /dev/null && echo "swift ok"
+python3 -c "import swift; print('swift ok', swift.__version__)"
 
 echo "=== 2/6 HF login ==="
-huggingface-cli login --token "$HF_TOKEN"
+python3 -c "from huggingface_hub import login; import os; login(os.environ['HF_TOKEN']); print('hf login ok')"
+if command -v hf >/dev/null 2>&1; then HF_DL="hf download"; else HF_DL="huggingface-cli download"; fi
 
 echo "=== 3/6 prepare data (HF image+text -> swift JSONL) ==="
 export HF_DATASET_ID DATA_DIR TRAIN_JSONL VAL_JSONL MAX_TRAIN_SAMPLES MAX_VAL_SAMPLES
@@ -75,7 +76,7 @@ except Exception:
 ")
   if [ "$HAS_CKPT" = "yes" ]; then
     echo "Thay last-checkpoint tren Hub -> tai ve va resume"
-    huggingface-cli download "$HF_OUTPUT_REPO" --include "last-checkpoint/*" --local-dir hub_resume
+    $HF_DL "$HF_OUTPUT_REPO" --include "last-checkpoint/*" --local-dir hub_resume
     python3 -c "
 import json
 try:
@@ -143,8 +144,13 @@ swift infer \
 
 echo "=== 6/6 merge LoRA + push HF Hub ==="
 swift export --adapters "$LAST_CKPT" --merge_lora true --output_dir "$MERGED_DIR"
-huggingface-cli upload-folder --repo-id "$HF_OUTPUT_REPO" --folder-path "$MERGED_DIR" \
-  --commit-message "qwen2.5-vl-3b vi-handwriting-ocr lora merged (ms-swift)"
-huggingface-cli upload-folder --repo-id "$HF_OUTPUT_REPO" --folder-path "$LAST_CKPT" \
-  --path-in-repo lora --commit-message "lora adapter"
+python3 -c "
+from huggingface_hub import HfApi
+import os
+api = HfApi(token=os.environ['HF_TOKEN'])
+repo = '$HF_OUTPUT_REPO'
+api.create_repo(repo, exist_ok=True)
+api.upload_folder(repo_id=repo, folder_path='$MERGED_DIR', commit_message='qwen2.5-vl-3b vi-handwriting-ocr lora merged (ms-swift)')
+api.upload_folder(repo_id=repo, folder_path='$LAST_CKPT', path_in_repo='lora', commit_message='lora adapter')
+"
 echo "DONE -> https://huggingface.co/$HF_OUTPUT_REPO"
