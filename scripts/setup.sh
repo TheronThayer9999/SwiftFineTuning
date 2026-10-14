@@ -108,7 +108,7 @@ swift sft \
   --hub_token "$HF_TOKEN" \
   --hub_strategy checkpoint \
   "${RESUME_ARGS[@]}" \
-  --train_type lora \
+  --tuner_type lora \
   --lora_rank "$LORA_R" \
   --lora_alpha "$LORA_ALPHA" \
   --target_modules all-linear \
