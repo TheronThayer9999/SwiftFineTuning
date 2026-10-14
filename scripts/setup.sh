@@ -2,6 +2,10 @@
 # One-command pipeline tren Colab (A100):
 #   git clone <repo-url> && cd SwiftFineTuning && bash scripts/setup.sh <HF_TOKEN> [OUTPUT_REPO] [MODEL_ID]
 # Vi du: bash scripts/setup.sh hf_xxx tranhuy67896262/qwen25vl-3b-vi-hwr-lora-v1
+# Train theo chunk 5k (khuyen dung tren Colab de tranh mat tien trinh):
+#   TRAIN_OFFSET=0    MAX_TRAIN_SAMPLES=5000 RUN_FINAL=false bash scripts/setup.sh hf_xxx <repo>
+#   TRAIN_OFFSET=5000 MAX_TRAIN_SAMPLES=5000 RUN_FINAL=false bash scripts/setup.sh hf_xxx <repo>
+#   TRAIN_OFFSET=10000 MAX_TRAIN_SAMPLES=5000               bash scripts/setup.sh hf_xxx <repo>  # chunk cuoi: infer+merge+push
 # Moi thu chay bang ms-swift: sft (LoRA) -> infer test -> export merge -> push HF Hub.
 set -euo pipefail
 
@@ -27,7 +31,9 @@ if [ $# -ge 3 ]; then MODEL_ID="$3"; fi
 : "${GRAD_ACCUM:=4}"
 : "${MAX_LENGTH:=1024}"
 : "${MAX_TRAIN_SAMPLES:=0}"
+: "${TRAIN_OFFSET:=0}"
 : "${MAX_VAL_SAMPLES:=1000}"
+: "${RUN_FINAL:=true}"
 : "${SAVE_STEPS:=50}"
 : "${EVAL_STEPS:=50}"
 
@@ -46,7 +52,8 @@ python3 -c "from huggingface_hub import login; import os; login(os.environ['HF_T
 if command -v hf >/dev/null 2>&1; then HF_DL="hf download"; else HF_DL="huggingface-cli download"; fi
 
 echo "=== 3/6 prepare data (HF image+text -> swift JSONL) ==="
-export HF_DATASET_ID DATA_DIR TRAIN_JSONL VAL_JSONL MAX_TRAIN_SAMPLES MAX_VAL_SAMPLES
+echo "chunk: offset=$TRAIN_OFFSET limit=${MAX_TRAIN_SAMPLES:-all} (RUN_FINAL=$RUN_FINAL)"
+export HF_DATASET_ID DATA_DIR TRAIN_JSONL VAL_JSONL MAX_TRAIN_SAMPLES TRAIN_OFFSET MAX_VAL_SAMPLES
 python3 scripts/prepare_data.py
 wc -l "$TRAIN_JSONL" "$VAL_JSONL"
 
@@ -123,6 +130,7 @@ swift sft \
   --gradient_checkpointing true \
   --attn_impl flash_attn
 
+if [ "$RUN_FINAL" = "true" ]; then
 echo "=== 5/6 test 1 anh val (swift infer) ==="
 LAST_CKPT=$(ls -d "$OUTPUT_DIR"/checkpoint-* 2>/dev/null | sort -V | tail -n 1)
 echo "LAST_CKPT=$LAST_CKPT"
@@ -156,3 +164,4 @@ api.upload_folder(repo_id=repo, folder_path='$MERGED_DIR', commit_message='qwen2
 api.upload_folder(repo_id=repo, folder_path='$LAST_CKPT', path_in_repo='lora', commit_message='lora adapter')
 "
 echo "DONE -> https://huggingface.co/$HF_OUTPUT_REPO"
+fi

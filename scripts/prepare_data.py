@@ -18,12 +18,13 @@ OCR_PROMPT = os.environ.get(
     "Chi tra ve noi dung van ban, khong giai thich them.",
 )
 MAX_TRAIN_SAMPLES = int(os.environ.get("MAX_TRAIN_SAMPLES", "0"))  # 0 = all
+TRAIN_OFFSET = int(os.environ.get("TRAIN_OFFSET", "0"))  # chunked training: start index
 MAX_VAL_SAMPLES = int(os.environ.get("MAX_VAL_SAMPLES", "1000"))  # 0 = all
 
 from datasets import load_dataset  # noqa: E402
 
 
-def dump_swift(ds, out_path, img_prefix):
+def dump_swift(ds, out_path, img_prefix, start_idx=0):
     n_skip = 0
     with open(out_path, "w", encoding="utf-8") as f:
         for i, row in enumerate(ds):
@@ -32,7 +33,7 @@ def dump_swift(ds, out_path, img_prefix):
             if not text or img is None:
                 n_skip += 1
                 continue
-            img_path = os.path.join(IMG_DIR, f"{img_prefix}_{i}.jpg")
+            img_path = os.path.join(IMG_DIR, f"{img_prefix}_{start_idx + i}.jpg")
             if not os.path.exists(img_path):
                 try:
                     img.convert("RGB").save(img_path, "JPEG")
@@ -56,12 +57,13 @@ def main():
     val_ds = load_dataset(HF_DATASET_ID, split="test", trust_remote_code=True)
     print(f"train={len(train_ds)} val={len(val_ds)}")
     print("sample:", repr(str(train_ds[0]["text"])[:150]))
-    if MAX_TRAIN_SAMPLES and len(train_ds) > MAX_TRAIN_SAMPLES:
-        train_ds = train_ds.select(range(MAX_TRAIN_SAMPLES))
+    if TRAIN_OFFSET or MAX_TRAIN_SAMPLES:
+        end = len(train_ds) if not MAX_TRAIN_SAMPLES else TRAIN_OFFSET + MAX_TRAIN_SAMPLES
+        train_ds = train_ds.select(range(TRAIN_OFFSET, min(end, len(train_ds))))
     if MAX_VAL_SAMPLES and len(val_ds) > MAX_VAL_SAMPLES:
         val_ds = val_ds.select(range(MAX_VAL_SAMPLES))
-    print(f"use train={len(train_ds)} val={len(val_ds)}")
-    dump_swift(train_ds, TRAIN_JSONL, "train")
+    print(f"use train={len(train_ds)} (offset={TRAIN_OFFSET}) val={len(val_ds)}")
+    dump_swift(train_ds, TRAIN_JSONL, "train", start_idx=TRAIN_OFFSET)
     dump_swift(val_ds, VAL_JSONL, "val")
 
 
