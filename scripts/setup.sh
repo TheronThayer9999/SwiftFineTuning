@@ -123,8 +123,8 @@ echo "--- bat auto-push nen: checkpoint moi nhat -> Hub (last-checkpoint) moi $P
 python3 -c "from huggingface_hub import HfApi; import os; HfApi(token=os.environ['HF_TOKEN']).create_repo(os.environ['HF_OUTPUT_REPO'], exist_ok=True); print('hub repo ok')"
 fix_readme() {
   # swift ghi base_model = duong dan cache local -> Hub tu choi (400); sua thanh model id
-  if [ -f "$1/README.md" ] && grep -q '^base_model: /' "$1/README.md"; then
-    sed -i "s|^base_model: .*|base_model: $MODEL_ID|" "$1/README.md"
+  if [ -f "$1/README.md" ] && grep -q 'base_model:' "$1/README.md"; then
+    sed -i "s|^base_model:.*|base_model: $MODEL_ID|" "$1/README.md"
     echo "fixed README base_model in $1"
   fi
 }
@@ -137,7 +137,7 @@ upload_latest() {
     if python3 -c "
 from huggingface_hub import HfApi
 import os
-HfApi(token=os.environ['HF_TOKEN']).upload_folder(repo_id='$HF_OUTPUT_REPO', folder_path='$LATEST_UP', path_in_repo='last-checkpoint', commit_message='auto checkpoint')
+HfApi(token=os.environ['HF_TOKEN']).upload_folder(repo_id='$HF_OUTPUT_REPO', folder_path='$LATEST_UP', path_in_repo='last-checkpoint', commit_message='auto checkpoint', ignore_patterns=['README.md'])
 "; then
       echo "$LATEST_UP" > .last_pushed
     fi
