@@ -36,6 +36,7 @@ if [ $# -ge 3 ]; then MODEL_ID="$3"; fi
 : "${RUN_FINAL:=true}"
 : "${SAVE_STEPS:=50}"
 : "${EVAL_STEPS:=50}"
+: "${PUSH_INTERVAL:=600}"
 
 if [ -z "${HF_TOKEN:-}" ]; then
   echo "ERROR: chua co HF_TOKEN. Chay: bash scripts/setup.sh <HF_TOKEN> [OUTPUT_REPO]  (hoac export HF_TOKEN truoc)"
@@ -62,8 +63,8 @@ wc -l "$TRAIN_JSONL" "$VAL_JSONL"
 echo "=== 4/6 train (swift sft, LoRA bf16, push Hub moi $SAVE_STEPS step) ==="
 echo "--- resume check (chong Colab chet) ---"
 RESUME_ARGS=()
-if ls -d "$OUTPUT_DIR"/checkpoint-* >/dev/null 2>&1; then
-  LATEST_LOCAL=$(ls -d "$OUTPUT_DIR"/checkpoint-* | sort -V | tail -n 1)
+if find "$OUTPUT_DIR" -maxdepth 2 -type d -name 'checkpoint-*' 2>/dev/null | grep -q .; then
+  LATEST_LOCAL=$(find "$OUTPUT_DIR" -maxdepth 2 -type d -name 'checkpoint-*' | sort -V | tail -n 1)
   echo "Thay checkpoint local ($LATEST_LOCAL) -> train tiep"
   python3 -c "
 import json
@@ -99,16 +100,38 @@ except Exception as e:
     echo "Chua co checkpoint tren Hub -> train tu dau"
   fi
 fi
+echo "--- bat auto-push nen: checkpoint moi nhat -> Hub (last-checkpoint) moi $PUSH_INTERVAL giay ---"
+python3 -c "from huggingface_hub import HfApi; import os; HfApi(token=os.environ['HF_TOKEN']).create_repo(os.environ['HF_OUTPUT_REPO'], exist_ok=True); print('hub repo ok')"
+upload_latest() {
+  LATEST_UP=$(find "$OUTPUT_DIR" -maxdepth 2 -type d -name 'checkpoint-*' 2>/dev/null | sort -V | tail -n 1)
+  LAST_PUSHED=$(cat .last_pushed 2>/dev/null || echo "")
+  if [ -n "$LATEST_UP" ] && [ "$LATEST_UP" != "$LAST_PUSHED" ]; then
+    echo "push $LATEST_UP -> Hub (last-checkpoint)"
+    if python3 -c "
+from huggingface_hub import HfApi
+import os
+HfApi(token=os.environ['HF_TOKEN']).upload_folder(repo_id='$HF_OUTPUT_REPO', folder_path='$LATEST_UP', path_in_repo='last-checkpoint', commit_message='auto checkpoint')
+"; then
+      echo "$LATEST_UP" > .last_pushed
+    fi
+  fi
+}
+(
+while true; do
+  sleep "$PUSH_INTERVAL"
+  upload_latest
+done
+) &
+PUSH_PID=$!
 swift sft \
   --model "$MODEL_ID" \
   --template qwen2_5_vl \
   --dataset "$TRAIN_JSONL" \
   --val_dataset "$VAL_JSONL" \
   --use_hf true \
-  --push_to_hub true \
+  --push_to_hub false \
   --hub_model_id "$HF_OUTPUT_REPO" \
   --hub_token "$HF_TOKEN" \
-  --hub_strategy checkpoint \
   "${RESUME_ARGS[@]}" \
   --tuner_type lora \
   --lora_rank "$LORA_R" \
@@ -132,9 +155,13 @@ swift sft \
   --dataloader_num_workers 2 \
   --gradient_checkpointing true
 
+kill $PUSH_PID 2>/dev/null || true
+upload_latest
+echo "--- train xong, checkpoint cuoi da push Hub ---"
+
 if [ "$RUN_FINAL" = "true" ]; then
 echo "=== 5/6 test 1 anh val (swift infer) ==="
-LAST_CKPT=$(ls -d "$OUTPUT_DIR"/checkpoint-* 2>/dev/null | sort -V | tail -n 1)
+LAST_CKPT=$(find "$OUTPUT_DIR" -maxdepth 2 -type d -name 'checkpoint-*' 2>/dev/null | sort -V | tail -n 1)
 echo "LAST_CKPT=$LAST_CKPT"
 python3 -c "
 import json, os

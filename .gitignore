@@ -7,4 +7,5 @@ data/
 output/
 merged/
 hub_resume/
+.last_pushed
 .idea/
