@@ -45,6 +45,8 @@ export HF_TOKEN
 
 echo "=== 1/6 install ms-swift ==="
 pip install -q ms-swift qwen-vl-utils datasets pyarrow pillow huggingface_hub
+# torchao co san tren Colab (0.10) khong tuong thich peft 0.20 -> go de dung LoRA chuan
+pip uninstall -y torchao || true
 python3 -c "import swift; print('swift ok', swift.__version__)"
 
 echo "=== 2/6 HF login ==="
