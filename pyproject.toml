@@ -1,0 +1,14 @@
+[project]
+name = "swiftfinetuning"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "ms-swift",
+    "qwen-vl-utils",
+    "datasets",
+    "pyarrow",
+    "pillow",
+    "huggingface_hub",
+    "python-dotenv",
+    "torchvision>=0.29.1",
+]

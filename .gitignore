@@ -1,0 +1,10 @@
+.env
+.venv/
+.venv-test/
+__pycache__/
+*.pyc
+data/
+output/
+merged/
+hub_resume/
+.idea/
