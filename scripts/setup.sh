@@ -127,8 +127,7 @@ swift sft \
   --logging_steps 10 \
   --output_dir "$OUTPUT_DIR" \
   --dataloader_num_workers 2 \
-  --gradient_checkpointing true \
-  --attn_impl flash_attn
+  --gradient_checkpointing true
 
 if [ "$RUN_FINAL" = "true" ]; then
 echo "=== 5/6 test 1 anh val (swift infer) ==="
