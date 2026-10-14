@@ -53,8 +53,8 @@ def dump_swift(ds, out_path, img_prefix, start_idx=0):
 
 def main():
     os.makedirs(IMG_DIR, exist_ok=True)
-    train_ds = load_dataset(HF_DATASET_ID, split="train", trust_remote_code=True)
-    val_ds = load_dataset(HF_DATASET_ID, split="test", trust_remote_code=True)
+    train_ds = load_dataset(HF_DATASET_ID, split="train")
+    val_ds = load_dataset(HF_DATASET_ID, split="test")
     print(f"train={len(train_ds)} val={len(val_ds)}")
     print("sample:", repr(str(train_ds[0]["text"])[:150]))
     if TRAIN_OFFSET or MAX_TRAIN_SAMPLES:
