@@ -209,7 +209,7 @@ swift infer \
   --max_new_tokens 256
 
 echo "=== 6/6 merge LoRA + push HF Hub ==="
-swift export --adapters "$LAST_CKPT" --merge_lora true --output_dir "$MERGED_DIR"
+swift export --model "$MODEL_ID" --adapters "$LAST_CKPT" --merge_lora true --output_dir "$MERGED_DIR" --use_hf true
 fix_readme "$MERGED_DIR"
 fix_readme "$LAST_CKPT"
 python3 -c "
