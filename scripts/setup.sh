@@ -37,6 +37,18 @@ if [ $# -ge 3 ]; then MODEL_ID="$3"; fi
 : "${SAVE_STEPS:=50}"
 : "${EVAL_STEPS:=50}"
 : "${PUSH_INTERVAL:=600}"
+: "${BATCH_SIZE_AUTO:=true}"
+
+# tu ha batch tren GPU nho (VD T4 15GB) de tranh OOM; dat BATCH_SIZE_AUTO=false de tat
+if [ "$BATCH_SIZE_AUTO" = "true" ] && command -v nvidia-smi >/dev/null 2>&1; then
+  GPU_MEM=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -n 1 || echo 0)
+  if [ "${GPU_MEM:-0}" -gt 0 ] && [ "$GPU_MEM" -lt 20000 ]; then
+    echo "GPU chi co ${GPU_MEM}MiB -> T4 mode: BATCH_SIZE $BATCH_SIZE -> 2 (eval batch giam theo)"
+    BATCH_SIZE=2
+  else
+    echo "GPU ${GPU_MEM:-unknown}MiB -> giu BATCH_SIZE=$BATCH_SIZE"
+  fi
+fi
 
 if [ -z "${HF_TOKEN:-}" ]; then
   echo "ERROR: chua co HF_TOKEN. Chay: bash scripts/setup.sh <HF_TOKEN> [OUTPUT_REPO]  (hoac export HF_TOKEN truoc)"
