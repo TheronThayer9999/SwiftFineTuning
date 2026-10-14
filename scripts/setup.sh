@@ -34,6 +34,7 @@ if [ $# -ge 3 ]; then MODEL_ID="$3"; fi
 : "${TRAIN_OFFSET:=0}"
 : "${MAX_VAL_SAMPLES:=1000}"
 : "${RUN_FINAL:=true}"
+: "${FRESH_START:=false}"
 : "${SAVE_STEPS:=50}"
 : "${EVAL_STEPS:=50}"
 : "${PUSH_INTERVAL:=600}"
@@ -75,6 +76,9 @@ wc -l "$TRAIN_JSONL" "$VAL_JSONL"
 echo "=== 4/6 train (swift sft, LoRA bf16, push Hub moi $SAVE_STEPS step) ==="
 echo "--- resume check (chong Colab chet) ---"
 RESUME_ARGS=()
+if [ "$FRESH_START" = "true" ]; then
+  echo "FRESH_START=true -> bo qua checkpoint cu, train tu dau"
+else
 if find "$OUTPUT_DIR" -maxdepth 2 -type d -name 'checkpoint-*' 2>/dev/null | grep -q .; then
   LATEST_LOCAL=$(find "$OUTPUT_DIR" -maxdepth 2 -type d -name 'checkpoint-*' | sort -V | tail -n 1)
   echo "Thay checkpoint local ($LATEST_LOCAL) -> train tiep"
@@ -111,6 +115,7 @@ except Exception as e:
   else
     echo "Chua co checkpoint tren Hub -> train tu dau"
   fi
+fi
 fi
 echo "--- bat auto-push nen: checkpoint moi nhat -> Hub (last-checkpoint) moi $PUSH_INTERVAL giay ---"
 python3 -c "from huggingface_hub import HfApi; import os; HfApi(token=os.environ['HF_TOKEN']).create_repo(os.environ['HF_OUTPUT_REPO'], exist_ok=True); print('hub repo ok')"
