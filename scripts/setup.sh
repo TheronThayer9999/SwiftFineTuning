@@ -120,10 +120,18 @@ fi
 fi
 echo "--- bat auto-push nen: checkpoint moi nhat -> Hub (last-checkpoint) moi $PUSH_INTERVAL giay ---"
 python3 -c "from huggingface_hub import HfApi; import os; HfApi(token=os.environ['HF_TOKEN']).create_repo(os.environ['HF_OUTPUT_REPO'], exist_ok=True); print('hub repo ok')"
+fix_readme() {
+  # swift ghi base_model = duong dan cache local -> Hub tu choi (400); sua thanh model id
+  if [ -f "$1/README.md" ] && grep -q '^base_model: /' "$1/README.md"; then
+    sed -i "s|^base_model: .*|base_model: $MODEL_ID|" "$1/README.md"
+    echo "fixed README base_model in $1"
+  fi
+}
 upload_latest() {
   LATEST_UP=$(find "$OUTPUT_DIR" -maxdepth 2 -type d -name 'checkpoint-*' 2>/dev/null | sort -V | tail -n 1)
   LAST_PUSHED=$(cat .last_pushed 2>/dev/null || echo "")
   if [ -n "$LATEST_UP" ] && [ "$LATEST_UP" != "$LAST_PUSHED" ]; then
+    fix_readme "$LATEST_UP"
     echo "push $LATEST_UP -> Hub (last-checkpoint)"
     if python3 -c "
 from huggingface_hub import HfApi
@@ -201,6 +209,8 @@ swift infer \
 
 echo "=== 6/6 merge LoRA + push HF Hub ==="
 swift export --adapters "$LAST_CKPT" --merge_lora true --output_dir "$MERGED_DIR"
+fix_readme "$MERGED_DIR"
+fix_readme "$LAST_CKPT"
 python3 -c "
 from huggingface_hub import HfApi
 import os
