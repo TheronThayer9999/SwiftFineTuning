@@ -42,7 +42,7 @@ if [ -z "${HF_TOKEN:-}" ]; then
   echo "ERROR: chua co HF_TOKEN. Chay: bash scripts/setup.sh <HF_TOKEN> [OUTPUT_REPO]  (hoac export HF_TOKEN truoc)"
   exit 1
 fi
-export HF_TOKEN
+export HF_TOKEN HF_OUTPUT_REPO MODEL_ID HF_DATASET_ID
 
 echo "=== 1/6 install ms-swift ==="
 pip install -q ms-swift qwen-vl-utils datasets pyarrow pillow huggingface_hub
