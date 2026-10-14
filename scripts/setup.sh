@@ -83,6 +83,7 @@ else
 if find "$OUTPUT_DIR" -maxdepth 2 -type d -name 'checkpoint-*' 2>/dev/null | grep -q .; then
   LATEST_LOCAL=$(find "$OUTPUT_DIR" -maxdepth 2 -type d -name 'checkpoint-*' | sort -V | tail -n 1)
   echo "Thay checkpoint local ($LATEST_LOCAL) -> train tiep"
+  RESUME_ARGS=(--resume_from_checkpoint "$LATEST_LOCAL")
   python3 -c "
 import json
 try:
