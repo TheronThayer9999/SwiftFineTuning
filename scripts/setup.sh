@@ -127,6 +127,7 @@ swift sft \
   --save_steps "$SAVE_STEPS" \
   --save_total_limit 3 \
   --logging_steps 10 \
+  --logging_first_step true \
   --output_dir "$OUTPUT_DIR" \
   --dataloader_num_workers 2 \
   --gradient_checkpointing true
